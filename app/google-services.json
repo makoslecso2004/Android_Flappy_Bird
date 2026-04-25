@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "289504189144",
+    "project_id": "my-flappy-bird-ced9a",
+    "storage_bucket": "my-flappy-bird-ced9a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:289504189144:android:e9654e682a829f8478d5ad",
+        "android_client_info": {
+          "package_name": "com.example.myapplication"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCjd1vsoc4zsGxd4bGvz2Mf8G9aD7wUJx0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
