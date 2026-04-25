@@ -18,8 +18,23 @@
         android:id="@+id/tvHighScore"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="High Score: 0"
+        android:text="Your Best: 0"
         android:textSize="20sp"
+        android:layout_marginBottom="20dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="TOP 10 LEADERBOARD"
+        android:textStyle="bold"
+        android:layout_marginBottom="10dp"/>
+
+    <TextView
+        android:id="@+id/tvLeaderboard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Loading..."
+        android:gravity="center"
         android:layout_marginBottom="30dp"/>
 
     <Button

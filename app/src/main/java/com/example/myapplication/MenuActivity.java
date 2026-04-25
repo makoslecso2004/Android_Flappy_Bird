@@ -15,9 +15,13 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 public class MenuActivity extends AppCompatActivity {
 
-    private TextView tvHighScore;
+    private TextView tvHighScore, tvLeaderboard;
     private Button btnPlay, btnLogout;
     private FirebaseAuth mAuth;
     private DatabaseReference mDatabase;
@@ -38,10 +42,12 @@ public class MenuActivity extends AppCompatActivity {
         mDatabase = FirebaseDatabase.getInstance("https://my-flappy-bird-ced9a-default-rtdb.europe-west1.firebasedatabase.app").getReference().child("users").child(userId);
 
         tvHighScore = findViewById(R.id.tvHighScore);
+        tvLeaderboard = findViewById(R.id.tvLeaderboard);
         btnPlay = findViewById(R.id.btnPlay);
         btnLogout = findViewById(R.id.btnLogout);
 
         loadHighScore();
+        loadLeaderboard();
 
         btnPlay.setOnClickListener(v -> {
             startActivity(new Intent(MenuActivity.this, GameActivity.class));
@@ -58,11 +64,11 @@ public class MenuActivity extends AppCompatActivity {
         mDatabase.child("highScore").addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if (snapshot.exists()) {
+                if (snapshot.exists() && snapshot.getValue() != null) {
                     long highScore = (long) snapshot.getValue();
-                    tvHighScore.setText("High Score: " + highScore);
+                    tvHighScore.setText("Your Best: " + highScore);
                 } else {
-                    tvHighScore.setText("High Score: 0");
+                    tvHighScore.setText("Your Best: 0");
                 }
             }
 
@@ -70,6 +76,35 @@ public class MenuActivity extends AppCompatActivity {
             public void onCancelled(@NonNull DatabaseError error) {
                 // Failed to read value
             }
+        });
+    }
+
+    private void loadLeaderboard() {
+        DatabaseReference usersRef = FirebaseDatabase.getInstance("https://my-flappy-bird-ced9a-default-rtdb.europe-west1.firebasedatabase.app").getReference().child("users");
+        usersRef.orderByChild("highScore").limitToLast(10).addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                StringBuilder builder = new StringBuilder();
+                List<DataSnapshot> list = new ArrayList<>();
+                for (DataSnapshot postSnapshot : snapshot.getChildren()) {
+                    list.add(postSnapshot);
+                }
+                Collections.reverse(list);
+
+                int rank = 1;
+                for (DataSnapshot ds : list) {
+                    String name = ds.child("username").getValue(String.class);
+                    Long score = ds.child("highScore").getValue(Long.class);
+                    if (name != null && score != null) {
+                        builder.append(rank).append(". ").append(name).append(": ").append(score).append("\n");
+                        rank++;
+                    }
+                }
+                tvLeaderboard.setText(builder.toString());
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
         });
     }
 }

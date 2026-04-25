@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import androidx.annotation.NonNull;
 import android.view.MotionEvent;
@@ -31,6 +32,7 @@ public class GameView extends SurfaceView implements Runnable {
 
     // Bird
     private float birdY;
+    private float birdX;
     private float birdVelocity = 0;
     private final float gravity = 1.5f;
     private final float jumpStrength = -25;
@@ -55,6 +57,14 @@ public class GameView extends SurfaceView implements Runnable {
     // Background
     private Bitmap backgroundBitmap;
 
+    // Bird Bitmaps
+    private Bitmap birdUpBitmap;
+    private Bitmap birdDownBitmap;
+
+    // Pipe Bitmaps
+    private Bitmap pipeBitmap;
+    private Bitmap topPipeBitmap;
+
     public GameView(Context context) {
         super(context);
         holder = getHolder();
@@ -63,7 +73,19 @@ public class GameView extends SurfaceView implements Runnable {
         pipes = new ArrayList<>();
 
         // Load Background Image
-        backgroundBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.flappybird);
+        backgroundBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.backgroundday);
+
+        // Load Bird Images
+        birdUpBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.yellowbirdupflap);
+        birdDownBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.yellowbirddownflap);
+
+        // Load Pipe Image and create a flipped version for the top
+        pipeBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.pipegreen);
+        if (pipeBitmap != null) {
+            Matrix matrix = new Matrix();
+            matrix.postScale(1, -1); // Flip vertically
+            topPipeBitmap = Bitmap.createBitmap(pipeBitmap, 0, 0, pipeBitmap.getWidth(), pipeBitmap.getHeight(), matrix, true);
+        }
 
         String userId = "";
         if (FirebaseAuth.getInstance().getCurrentUser() != null) {
@@ -98,9 +120,10 @@ public class GameView extends SurfaceView implements Runnable {
 
         // Init bird position once screen size is known
         if (birdY == 0 && getHeight() > 0) {
-            birdY = getHeight() / 2f;
             screenWidth = getWidth();
             screenHeight = getHeight();
+            birdY = screenHeight / 2f;
+            birdX = screenWidth / 4f; // Move to 1/4th of screen width from left
         }
 
         // Gravity
@@ -113,7 +136,7 @@ public class GameView extends SurfaceView implements Runnable {
         }
 
         // Pipes logic
-        if (pipes.isEmpty() || pipes.get(pipes.size() - 1).x < screenWidth - 600) {
+        if (pipes.isEmpty() || pipes.get(pipes.size() - 1).x < screenWidth - 800) {
             int maxPipeHeight = screenHeight - pipeGap - 200;
             if (maxPipeHeight <= 0) maxPipeHeight = 100; // Fallback for small screens
             int h = random.nextInt(maxPipeHeight) + 100;
@@ -125,14 +148,14 @@ public class GameView extends SurfaceView implements Runnable {
             p.x -= pipeSpeed;
 
             // Collision check
-            if (p.x < screenWidth / 2f + birdSize && p.x + pipeWidth > screenWidth / 2f) {
+            if (p.x < birdX + birdSize && p.x + pipeWidth > birdX) {
                 if (birdY < p.height || birdY + birdSize > p.height + pipeGap) {
                     gameOver();
                 }
             }
 
             // Score update
-            if (!p.passed && p.x + pipeWidth < screenWidth / 2f) {
+            if (!p.passed && p.x + pipeWidth < birdX) {
                 score++;
                 p.passed = true;
             }
@@ -165,15 +188,30 @@ public class GameView extends SurfaceView implements Runnable {
             }
 
             // Draw Pipes
-            paint.setColor(Color.GREEN);
             for (Pipe p : pipes) {
-                canvas.drawRect(p.x, 0, p.x + pipeWidth, p.height, paint);
-                canvas.drawRect(p.x, p.height + pipeGap, p.x + pipeWidth, screenHeight, paint);
+                if (pipeBitmap != null && topPipeBitmap != null) {
+                    // Draw Top Pipe (flipped)
+                    canvas.drawBitmap(topPipeBitmap, null, 
+                        new android.graphics.Rect(p.x, 0, p.x + pipeWidth, p.height), null);
+                    // Draw Bottom Pipe
+                    canvas.drawBitmap(pipeBitmap, null, 
+                        new android.graphics.Rect(p.x, p.height + pipeGap, p.x + pipeWidth, screenHeight), null);
+                } else {
+                    paint.setColor(Color.GREEN);
+                    canvas.drawRect(p.x, 0, p.x + pipeWidth, p.height, paint);
+                    canvas.drawRect(p.x, p.height + pipeGap, p.x + pipeWidth, screenHeight, paint);
+                }
             }
 
             // Draw Bird
-            paint.setColor(Color.YELLOW);
-            canvas.drawRect(screenWidth / 2f, birdY, screenWidth / 2f + birdSize, birdY + birdSize, paint);
+            Bitmap currentBird = birdVelocity < 0 ? birdDownBitmap : birdUpBitmap;
+            if (currentBird != null) {
+                canvas.drawBitmap(currentBird, null, 
+                    new android.graphics.Rect((int)birdX, (int)birdY, (int)(birdX + birdSize), (int)(birdY + birdSize)), null);
+            } else {
+                paint.setColor(Color.YELLOW);
+                canvas.drawRect(birdX, birdY, birdX + birdSize, birdY + birdSize, paint);
+            }
 
             // Draw Score
             paint.setColor(Color.BLACK);
@@ -283,6 +321,7 @@ public class GameView extends SurfaceView implements Runnable {
 
     private void restart() {
         birdY = screenHeight / 2f;
+        birdX = screenWidth / 4f;
         birdVelocity = 0;
         score = 0;
         pipes.clear();

@@ -14,7 +14,7 @@ import com.google.firebase.auth.FirebaseAuth;
 
 public class RegisterActivity extends AppCompatActivity {
 
-    private EditText etEmail, etPassword;
+    private EditText etEmail, etPassword, etUsername;
     private Button btnRegister;
     private TextView tvLogin;
     private FirebaseAuth mAuth;
@@ -28,6 +28,7 @@ public class RegisterActivity extends AppCompatActivity {
 
         etEmail = findViewById(R.id.etEmail);
         etPassword = findViewById(R.id.etPassword);
+        etUsername = findViewById(R.id.etUsername);
         btnRegister = findViewById(R.id.btnRegister);
         tvLogin = findViewById(R.id.tvLogin);
 
@@ -42,6 +43,12 @@ public class RegisterActivity extends AppCompatActivity {
     private void registerUser() {
         String email = etEmail.getText().toString().trim();
         String password = etPassword.getText().toString().trim();
+        String username = etUsername.getText().toString().trim();
+
+        if (TextUtils.isEmpty(username)) {
+            Toast.makeText(this, "Enter username", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         if (TextUtils.isEmpty(email)) {
             Toast.makeText(this, "Enter email", Toast.LENGTH_SHORT).show();
@@ -61,9 +68,18 @@ public class RegisterActivity extends AppCompatActivity {
         mAuth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
-                        Toast.makeText(RegisterActivity.this, "Registration successful", Toast.LENGTH_SHORT).show();
-                        startActivity(new Intent(RegisterActivity.this, MenuActivity.class));
-                        finish();
+                        String userId = mAuth.getCurrentUser().getUid();
+                        com.google.firebase.database.DatabaseReference db = com.google.firebase.database.FirebaseDatabase.getInstance("https://my-flappy-bird-ced9a-default-rtdb.europe-west1.firebasedatabase.app").getReference().child("users").child(userId);
+                        
+                        java.util.Map<String, Object> userMap = new java.util.HashMap<>();
+                        userMap.put("username", username);
+                        userMap.put("highScore", 0);
+                        
+                        db.setValue(userMap).addOnCompleteListener(dbTask -> {
+                            Toast.makeText(RegisterActivity.this, "Registration successful", Toast.LENGTH_SHORT).show();
+                            startActivity(new Intent(RegisterActivity.this, MenuActivity.class));
+                            finish();
+                        });
                     } else {
                         String errorMsg = task.getException() != null ? task.getException().getMessage() : "Unknown error";
                         Toast.makeText(RegisterActivity.this, "Registration failed: " + errorMsg, Toast.LENGTH_SHORT).show();
