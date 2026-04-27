@@ -3,9 +3,12 @@ package com.example.myapplication;
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.firebase.auth.FirebaseAuth;
@@ -22,7 +25,7 @@ import java.util.List;
 public class MenuActivity extends AppCompatActivity {
 
     private TextView tvHighScore, tvLeaderboard;
-    private Button btnPlay, btnLogout;
+    private Button btnPlay, btnLogout, btnEditProfile, btnBugReport;
     private FirebaseAuth mAuth;
     private DatabaseReference mDatabase;
 
@@ -45,6 +48,8 @@ public class MenuActivity extends AppCompatActivity {
         tvLeaderboard = findViewById(R.id.tvLeaderboard);
         btnPlay = findViewById(R.id.btnPlay);
         btnLogout = findViewById(R.id.btnLogout);
+        btnEditProfile = findViewById(R.id.btnEditProfile);
+        btnBugReport = findViewById(R.id.btnBugReport);
 
         loadHighScore();
         loadLeaderboard();
@@ -58,6 +63,57 @@ public class MenuActivity extends AppCompatActivity {
             startActivity(new Intent(MenuActivity.this, LoginActivity.class));
             finish();
         });
+
+        btnEditProfile.setOnClickListener(v -> {
+            startActivity(new Intent(MenuActivity.this, ProfileActivity.class));
+        });
+
+        btnBugReport.setOnClickListener(v -> showBugReportDialog());
+    }
+
+    private void showBugReportDialog() {
+        final EditText taskEditText = new EditText(this);
+        taskEditText.setHint("Describe the bug here...");
+        
+        new AlertDialog.Builder(this)
+                .setTitle("Report a Bug")
+                .setMessage("Please describe the issue you encountered:")
+                .setView(taskEditText)
+                .setPositiveButton("Send", (dialog, which) -> {
+                    String report = taskEditText.getText().toString().trim();
+                    if (!report.isEmpty()) {
+                        sendEmail(report);
+                    } else {
+                        Toast.makeText(MenuActivity.this, "Please enter a description", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void sendEmail(String bugDescription) {
+        String username = "Unknown";
+        if (mAuth.getCurrentUser() != null) {
+            username = mAuth.getCurrentUser().getEmail();
+        }
+
+        String subject = "Flappy Bird Bug Report from " + username;
+        String body = "Bug Description:\n" + bugDescription + "\n\n" +
+                      "Device Info:\n" +
+                      "Model: " + android.os.Build.MODEL + "\n" +
+                      "Android Version: " + android.os.Build.VERSION.RELEASE;
+
+        Intent intent = new Intent(Intent.ACTION_SENDTO);
+        intent.setData(android.net.Uri.parse("mailto:"));
+        intent.putExtra(Intent.EXTRA_EMAIL, new String[]{"makoslecso2004@gmail.com"});
+        intent.putExtra(Intent.EXTRA_SUBJECT, subject);
+        intent.putExtra(Intent.EXTRA_TEXT, body);
+
+        try {
+            startActivity(Intent.createChooser(intent, "Send Email..."));
+        } catch (android.content.ActivityNotFoundException ex) {
+            Toast.makeText(this, "No email client installed.", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void loadHighScore() {

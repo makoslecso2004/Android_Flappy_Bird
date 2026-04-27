@@ -48,6 +48,7 @@ public class GameView extends SurfaceView implements Runnable {
     // Game State
     private int score = 0;
     private boolean isGameOver = false;
+    private boolean hasStarted = false;
     private int screenWidth, screenHeight;
 
     // Pre-allocated Rects for drawing
@@ -138,14 +139,15 @@ public class GameView extends SurfaceView implements Runnable {
     }
 
     private void update() {
-        if (isGameOver) return;
-
-        // Init bird position once screen size is known
-        if (birdY == 0 && getHeight() > 0) {
-            screenWidth = getWidth();
-            screenHeight = getHeight();
-            birdY = screenHeight / 2f;
-            birdX = screenWidth / 4f; // Move to 1/4th of screen width from left
+        if (!hasStarted || isGameOver) {
+            // Still need to init dimensions if not done
+            if (screenWidth == 0 && getHeight() > 0) {
+                screenWidth = getWidth();
+                screenHeight = getHeight();
+                birdY = screenHeight / 2f;
+                birdX = screenWidth / 4f;
+            }
+            return;
         }
 
         // Gravity
@@ -219,73 +221,89 @@ public class GameView extends SurfaceView implements Runnable {
             }
 
             // Draw Pipes
-            for (PipePair p : pipePairs) {
-                if (pipeBitmap != null && topPipeBitmap != null) {
-            // Top Pipe: Bottom of bitmap is at p.gapTopY
-            pipeDstRect.set(p.x, p.gapTopY - screenHeight, p.x + pipeWidth, p.gapTopY);
-            canvas.drawBitmap(topPipeBitmap, null, pipeDstRect, null);
+            if (hasStarted) {
+                for (PipePair p : pipePairs) {
+                    if (pipeBitmap != null && topPipeBitmap != null) {
+                        // Top Pipe: Bottom of bitmap is at p.gapTopY
+                        pipeDstRect.set(p.x, p.gapTopY - screenHeight, p.x + pipeWidth, p.gapTopY);
+                        canvas.drawBitmap(topPipeBitmap, null, pipeDstRect, null);
 
-            // Bottom Pipe: Top of bitmap is at p.gapTopY + pipeGap
-            pipeDstRect.set(p.x, p.gapTopY + pipeGap, p.x + pipeWidth, p.gapTopY + pipeGap + screenHeight);
-            canvas.drawBitmap(pipeBitmap, null, pipeDstRect, null);
-                } else {
-                    paint.setColor(Color.GREEN);
-                    canvas.drawRect(p.x, 0, p.x + pipeWidth, p.gapTopY, paint);
-                    canvas.drawRect(p.x, p.gapTopY + pipeGap, p.x + pipeWidth, screenHeight, paint);
+                        // Bottom Pipe: Top of bitmap is at p.gapTopY + pipeGap
+                        pipeDstRect.set(p.x, p.gapTopY + pipeGap, p.x + pipeWidth, p.gapTopY + pipeGap + screenHeight);
+                        canvas.drawBitmap(pipeBitmap, null, pipeDstRect, null);
+                    } else {
+                        paint.setColor(Color.GREEN);
+                        canvas.drawRect(p.x, 0, p.x + pipeWidth, p.gapTopY, paint);
+                        canvas.drawRect(p.x, p.gapTopY + pipeGap, p.x + pipeWidth, screenHeight, paint);
+                    }
                 }
             }
 
             // Draw Bird
-            Bitmap currentBird = birdVelocity < 0 ? birdDownBitmap : birdUpBitmap;
-            if (currentBird != null) {
-                birdRect.set((int)birdX, (int)birdY, (int)(birdX + birdSize), (int)(birdY + birdSize));
-                canvas.drawBitmap(currentBird, null, birdRect, null);
-            } else {
-                paint.setColor(Color.YELLOW);
-                canvas.drawRect(birdX, birdY, birdX + birdSize, birdY + birdSize, paint);
+            if (hasStarted) {
+                Bitmap currentBird = birdVelocity < 0 ? birdDownBitmap : birdUpBitmap;
+                if (currentBird != null) {
+                    birdRect.set((int) birdX, (int) birdY, (int) (birdX + birdSize), (int) (birdY + birdSize));
+                    canvas.drawBitmap(currentBird, null, birdRect, null);
+                } else {
+                    paint.setColor(Color.YELLOW);
+                    canvas.drawRect(birdX, birdY, birdX + birdSize, birdY + birdSize, paint);
+                }
             }
 
             // Draw Score
-            paint.setColor(Color.BLACK);
-            paint.setTextSize(100);
-            canvas.drawText("Score: " + score, 50, 150, paint);
+            if (hasStarted) {
+                paint.setColor(Color.BLACK);
+                paint.setTextSize(100);
+                canvas.drawText("Score: " + score, 50, 150, paint);
+            }
             
             // Draw Best Score
-            paint.setTextSize(60);
-            canvas.drawText("Best: " + currentHighScore, 50, 230, paint);
-
-            if (isGameOver) {
-                paint.setTextSize(150);
-                paint.setTextAlign(Paint.Align.CENTER);
-                paint.setColor(Color.BLACK);
-                canvas.drawText("GAME OVER", screenWidth / 2f, screenHeight / 2f - 150, paint);
-                
-                paint.setTextSize(80);
-                canvas.drawText("Tap to Restart", screenWidth / 2f, screenHeight / 2f, paint);
-
-                // Draw Menu Button
-                String menuText = "BACK TO MENU";
+            if (hasStarted) {
                 paint.setTextSize(60);
-                float textWidth = paint.measureText(menuText);
-                float buttonWidth = textWidth + 100; // Add padding
-                float buttonHeight = 120;
-                float buttonTop = screenHeight / 2f + 100;
-                float buttonBottom = buttonTop + buttonHeight;
-                float buttonLeft = screenWidth / 2f - buttonWidth / 2f;
-                float buttonRight = screenWidth / 2f + buttonWidth / 2f;
+                canvas.drawText("Best: " + currentHighScore, 50, 230, paint);
+            }
 
-                paint.setColor(Color.DKGRAY);
-                canvas.drawRect(buttonLeft, buttonTop, buttonRight, buttonBottom, paint);
-                
-                paint.setColor(Color.WHITE);
-                canvas.drawText(menuText, screenWidth / 2f, buttonTop + 80, paint);
-                
-                // Reset alignment for next frame
-                paint.setTextAlign(Paint.Align.LEFT);
+            if (!hasStarted) {
+                drawMenuOverlay(canvas, "TAP TO START");
+            } else if (isGameOver) {
+                drawMenuOverlay(canvas, "GAME OVER");
             }
 
             holder.unlockCanvasAndPost(canvas);
         }
+    }
+
+    private void drawMenuOverlay(Canvas canvas, String title) {
+        paint.setTextAlign(Paint.Align.CENTER);
+        paint.setColor(Color.BLACK);
+        paint.setTextSize(150);
+        canvas.drawText(title, screenWidth / 2f, screenHeight / 2f - 150, paint);
+
+        if (title.equals("GAME OVER")) {
+            paint.setTextSize(80);
+            canvas.drawText("Tap to Restart", screenWidth / 2f, screenHeight / 2f, paint);
+        }
+
+        // Draw Back to Menu Button
+        String menuText = "BACK TO MENU";
+        paint.setTextSize(60);
+        float textWidth = paint.measureText(menuText);
+        float buttonWidth = textWidth + 100;
+        float buttonHeight = 120;
+        float buttonTop = screenHeight / 2f + 100;
+        float buttonBottom = buttonTop + buttonHeight;
+        float buttonLeft = screenWidth / 2f - buttonWidth / 2f;
+        float buttonRight = screenWidth / 2f + buttonWidth / 2f;
+
+        paint.setColor(Color.DKGRAY);
+        canvas.drawRect(buttonLeft, buttonTop, buttonRight, buttonBottom, paint);
+
+        paint.setColor(Color.WHITE);
+        canvas.drawText(menuText, screenWidth / 2f, buttonTop + 80, paint);
+
+        // Reset for next frame
+        paint.setTextAlign(Paint.Align.LEFT);
     }
 
     public void resume() {
@@ -306,27 +324,32 @@ public class GameView extends SurfaceView implements Runnable {
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
-            if (isGameOver) {
+            if (!hasStarted || isGameOver) {
                 float x = event.getX();
                 float y = event.getY();
 
-                // Recalculate button bounds for click detection
-                String menuText = "BACK TO MENU";
+                // Button bounds (same as in drawMenuOverlay)
                 paint.setTextSize(60);
-                float textWidth = paint.measureText(menuText);
+                float textWidth = paint.measureText("BACK TO MENU");
                 float buttonWidth = textWidth + 100;
                 float buttonTop = screenHeight / 2f + 100;
                 float buttonBottom = buttonTop + 120;
                 float buttonLeft = screenWidth / 2f - buttonWidth / 2f;
                 float buttonRight = screenWidth / 2f + buttonWidth / 2f;
 
-                // Check if "Back to Menu" button was clicked
                 if (x > buttonLeft && x < buttonRight && y > buttonTop && y < buttonBottom) {
                     if (getContext() instanceof android.app.Activity) {
                         ((android.app.Activity) getContext()).finish();
                     }
                 } else {
-                    restart();
+                    if (!hasStarted) {
+                        hasStarted = true;
+                        birdVelocity = jumpStrength;
+                    } else {
+                        restart();
+                        hasStarted = true; // Start immediately after restart
+                        birdVelocity = jumpStrength; // Apply initial jump
+                    }
                 }
             } else {
                 birdVelocity = jumpStrength;
@@ -350,6 +373,7 @@ public class GameView extends SurfaceView implements Runnable {
         score = 0;
         pipePairs.clear();
         isGameOver = false;
+        hasStarted = false;
     }
 
     private static class PipePair {
